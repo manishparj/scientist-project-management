@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "nodemon --exec tsx index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "seed": "tsx scripts/createSuperAdmin.ts",
+    "seed:admin": "tsx scripts/createSuperAdmin.ts"
   },
   "dependencies": {
     "express": "^4.18.2",

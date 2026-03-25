@@ -12,9 +12,11 @@ export const getProjects = async (req: Request, res: Response) => {
       filter.scientistId = scientistId;
     }
     
-    const projects = await Project.find(filter).populate('scientistId', 'name email');
+    // Populate scientistId to get full scientist details
+    const projects = await Project.find(filter).populate('scientistId', 'name email designation');
     res.json(projects);
   } catch (error) {
+    console.error('Get projects error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -22,8 +24,11 @@ export const getProjects = async (req: Request, res: Response) => {
 export const createProject = async (req: Request, res: Response) => {
   try {
     const project = await Project.create(req.body);
-    res.status(201).json(project);
+    // Populate the created project
+    const populatedProject = await Project.findById(project._id).populate('scientistId', 'name email designation');
+    res.status(201).json(populatedProject);
   } catch (error) {
+    console.error('Create project error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -35,7 +40,7 @@ export const updateProject = async (req: Request, res: Response) => {
       id,
       { $set: req.body },
       { new: true }
-    );
+    ).populate('scientistId', 'name email designation');
     
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
@@ -43,6 +48,7 @@ export const updateProject = async (req: Request, res: Response) => {
     
     res.json(project);
   } catch (error) {
+    console.error('Update project error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -54,6 +60,7 @@ export const deleteProject = async (req: Request, res: Response) => {
     await Staff.deleteMany({ projectId: id });
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
+    console.error('Delete project error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

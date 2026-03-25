@@ -1,7 +1,7 @@
 // backend/src/routes/projectRoutes.ts
 import { Router } from 'express';
-import { protect } from '../middleware/auth.js';
-import { getProjects, createProject, updateProject, deleteProject } from '../controllers/projectController.js';
+import { getProjects, createProject, updateProject, deleteProject } from '../controllers/projectController';
+import { protect } from '../middleware/auth';
 
 const router = Router();
 

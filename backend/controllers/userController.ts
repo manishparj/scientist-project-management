@@ -1,6 +1,7 @@
 // backend/src/controllers/userController.ts
 import { Request, Response } from 'express';
 import User from '../models/User.js';
+import { log } from 'console';
 
 export const getScientists = async (req: Request, res: Response) => {
   try {
@@ -23,6 +24,8 @@ export const createScientist = async (req: Request, res: Response) => {
       designation,
       mobile
     });
+    console.log('>>>>>>>>>>>>', scientist);
+    
     
     res.status(201).json({
       _id: scientist._id,

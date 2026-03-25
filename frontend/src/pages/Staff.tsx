@@ -39,6 +39,28 @@ const Staff = () => {
   const [updateStaff] = useUpdateStaffMutation();
   const [deleteStaff] = useDeleteStaffMutation();
 
+  // Get the selected project details to get scientistId
+  const selectedProject = projects?.find(p => p._id === selectedProjectId);
+  // Fix: Get scientist name properly - handle if scientistId is an object or string
+  const getScientistName = () => {
+    if (!selectedProject) return 'Not assigned';
+    const scientistId = selectedProject.scientistId;
+    // Check if scientistId is an object with name property
+    if (scientistId && typeof scientistId === 'object' && scientistId.name) {
+      return scientistId.name;
+    }
+    // If it's a string ID, we need to find the scientist from the projects data
+    if (scientistId && typeof scientistId === 'string') {
+      // Try to find scientist from projects list (projects already populated with scientist data)
+      const scientist = projects?.find(p => p._id === selectedProjectId)?.scientistId;
+      if (scientist && typeof scientist === 'object' && scientist.name) {
+        return scientist.name;
+      }
+      return scientistId; // Return the ID if name not found
+    }
+    return 'Not assigned';
+  };
+
   const columns = [
     { title: 'Name', dataIndex: 'name', key: 'name' },
     { title: 'Designation', dataIndex: 'designation', key: 'designation' },
@@ -92,11 +114,35 @@ const Staff = () => {
 
   const handleSubmit = async (values: any, { resetForm }: any) => {
     try {
+      if (!selectedProjectId) {
+        toast.error('Please select a project first');
+        return;
+      }
+
+      // Get scientistId properly
+      let scientistIdValue = null;
+      if (selectedProject && selectedProject.scientistId) {
+        // If scientistId is an object with _id, use that
+        if (typeof selectedProject.scientistId === 'object' && selectedProject.scientistId._id) {
+          scientistIdValue = selectedProject.scientistId._id;
+        } 
+        // If it's a string, use it directly
+        else if (typeof selectedProject.scientistId === 'string') {
+          scientistIdValue = selectedProject.scientistId;
+        }
+      }
+
+      if (!scientistIdValue) {
+        toast.error('Project scientist information not found');
+        return;
+      }
+
       const staffData = {
         ...values,
         doj: values.doj.toISOString(),
         lastDay: values.lastDay ? values.lastDay.toISOString() : undefined,
         projectId: selectedProjectId,
+        scientistId: scientistIdValue, // Add scientistId to the staff data
       };
 
       if (editingStaff) {
@@ -110,8 +156,9 @@ const Staff = () => {
       resetForm();
       setEditingStaff(null);
       refetch();
-    } catch (error) {
-      toast.error('Operation failed');
+    } catch (error: any) {
+      console.error('Staff operation error:', error);
+      toast.error(error?.data?.message || 'Operation failed');
     }
   };
 
@@ -125,15 +172,42 @@ const Staff = () => {
             <Select
               placeholder="Choose a project to view staff"
               style={{ width: '100%' }}
-              onChange={setSelectedProjectId}
+              onChange={(value) => {
+                setSelectedProjectId(value);
+                setEditingStaff(null);
+                setIsModalOpen(false);
+              }}
               value={selectedProjectId}
             >
-              {projects?.map(p => (
-                <Option key={p._id} value={p._id}>{p.name}</Option>
-              ))}
+              {projects?.map(p => {
+                // Get scientist name safely
+                let scientistDisplay = 'No scientist assigned';
+                if (p.scientistId) {
+                  if (typeof p.scientistId === 'object' && p.scientistId.name) {
+                    scientistDisplay = p.scientistId.name;
+                  } else if (typeof p.scientistId === 'string') {
+                    scientistDisplay = `Scientist ID: ${p.scientistId}`;
+                  }
+                }
+                return (
+                  <Option key={p._id} value={p._id}>
+                    {p.name} - {p.type} ({scientistDisplay})
+                  </Option>
+                );
+              })}
             </Select>
           </Form.Item>
         </Form>
+        
+        {selectedProject && (
+          <div style={{ marginTop: 12, padding: '8px 12px', background: '#f0f2f5', borderRadius: '4px' }}>
+            <Space split={<span>|</span>}>
+              <span><strong>Project:</strong> {selectedProject.name}</span>
+              <span><strong>Type:</strong> {selectedProject.type}</span>
+              <span><strong>Scientist:</strong> {getScientistName()}</span>
+            </Space>
+          </div>
+        )}
       </Card>
 
       {selectedProjectId && (
@@ -181,101 +255,148 @@ const Staff = () => {
         >
           {({ errors, touched, isSubmitting, setFieldValue, values }) => (
             <FormikForm>
-              <Form layout="vertical">
-                <Form.Item 
-                  label="Name" 
-                  validateStatus={errors.name && touched.name ? 'error' : ''}
-                  help={errors.name && touched.name && errors.name}
-                >
-                  <Field name="name" as={Input} placeholder="Full name" />
-                </Form.Item>
+              {/* Project Info Display */}
+              <div style={{ marginBottom: 16, padding: '12px', background: '#f0f2f5', borderRadius: '4px' }}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <div><strong>Project:</strong> {selectedProject?.name}</div>
+                  <div><strong>Scientist:</strong> {getScientistName()}</div>
+                </Space>
+              </div>
 
-                <Form.Item 
-                  label="Designation" 
-                  validateStatus={errors.designation && touched.designation ? 'error' : ''}
-                  help={errors.designation && touched.designation && errors.designation}
-                >
-                  <Field name="designation" as={Input} placeholder="Designation" />
-                </Form.Item>
-
-                <Form.Item 
-                  label="Date of Joining" 
-                  validateStatus={errors.doj && touched.doj ? 'error' : ''}
-                  help={errors.doj && touched.doj && 'Required'}
-                >
-                  <DatePicker 
-                    style={{ width: '100%' }}
-                    value={values.doj}
-                    onChange={(date) => setFieldValue('doj', date)}
-                  />
-                </Form.Item>
-
-                <Form.Item 
-                  label="Currently Working" 
-                  validateStatus={errors.currentlyWorking && touched.currentlyWorking ? 'error' : ''}
-                >
-                  <Select
-                    value={values.currentlyWorking}
-                    onChange={(value) => {
-                      setFieldValue('currentlyWorking', value);
-                      if (value) {
-                        setFieldValue('lastDay', null);
-                      }
-                    }}
-                  >
-                    <Option value={true}>Yes</Option>
-                    <Option value={false}>No</Option>
-                  </Select>
-                </Form.Item>
-
-                {!values.currentlyWorking && (
-                  <Form.Item 
-                    label="Last Working Day" 
-                    validateStatus={errors.lastDay && touched.lastDay ? 'error' : ''}
-                    help={errors.lastDay && touched.lastDay && errors.lastDay}
-                  >
-                    <DatePicker 
-                      style={{ width: '100%' }}
-                      value={values.lastDay}
-                      onChange={(date) => setFieldValue('lastDay', date)}
+              {/* NAME */}
+              <div style={{ marginBottom: 16 }}>
+                <label>Name *</label>
+                <Field name="name">
+                  {({ field }: any) => (
+                    <Input 
+                      {...field} 
+                      status={errors.name && touched.name ? 'error' : ''} 
+                      placeholder="Enter staff name"
                     />
-                  </Form.Item>
+                  )}
+                </Field>
+               
+              </div>
+
+              {/* DESIGNATION */}
+              <div style={{ marginBottom: 16 }}>
+                <label>Designation *</label>
+                <Field name="designation">
+                  {({ field }: any) => (
+                    <Input 
+                      {...field} 
+                      status={errors.designation && touched.designation ? 'error' : ''} 
+                      placeholder="Enter designation"
+                    />
+                  )}
+                </Field>
+             
+              </div>
+
+              {/* DOJ */}
+              <div style={{ marginBottom: 16 }}>
+                <label>Date of Joining *</label>
+                <DatePicker
+                  style={{ width: '100%' }}
+                  value={values.doj}
+                  onChange={(date) => setFieldValue('doj', date)}
+                  status={errors.doj && touched.doj ? 'error' : ''}
+                  placeholder="Select joining date"
+                />
+                {errors.doj && touched.doj && (
+                  <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>Required</div>
                 )}
+              </div>
 
-                <Form.Item 
-                  label="Mobile" 
-                  validateStatus={errors.mobile && touched.mobile ? 'error' : ''}
-                  help={errors.mobile && touched.mobile && errors.mobile}
+              {/* CURRENTLY WORKING */}
+              <div style={{ marginBottom: 16 }}>
+                <label>Currently Working *</label>
+                <Select
+                  value={values.currentlyWorking}
+                  onChange={(value) => {
+                    setFieldValue('currentlyWorking', value);
+                    if (value) setFieldValue('lastDay', null);
+                  }}
+                  style={{ width: '100%' }}
                 >
-                  <Field name="mobile" as={Input} placeholder="Mobile number" />
-                </Form.Item>
+                  <Option value={true}>Yes</Option>
+                  <Option value={false}>No</Option>
+                </Select>
+              </div>
 
-                <Form.Item 
-                  label="Email" 
-                  validateStatus={errors.email && touched.email ? 'error' : ''}
-                  help={errors.email && touched.email && errors.email}
+              {/* LAST DAY */}
+              {!values.currentlyWorking && (
+                <div style={{ marginBottom: 16 }}>
+                  <label>Last Working Day *</label>
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    value={values.lastDay}
+                    onChange={(date) => setFieldValue('lastDay', date)}
+                    status={errors.lastDay && touched.lastDay ? 'error' : ''}
+                    placeholder="Select last working day"
+                  />
+                  {errors.lastDay && touched.lastDay && (
+                    <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{errors.lastDay}</div>
+                  )}
+                </div>
+              )}
+
+              {/* MOBILE */}
+              <div style={{ marginBottom: 16 }}>
+                <label>Mobile *</label>
+                <Field name="mobile">
+                  {({ field }: any) => (
+                    <Input 
+                      {...field} 
+                      status={errors.mobile && touched.mobile ? 'error' : ''} 
+                      placeholder="Enter mobile number"
+                    />
+                  )}
+                </Field>
+               
+              </div>
+
+              {/* EMAIL */}
+              <div style={{ marginBottom: 16 }}>
+                <label>Email *</label>
+                <Field name="email">
+                  {({ field }: any) => (
+                    <Input 
+                      {...field} 
+                      status={errors.email && touched.email ? 'error' : ''} 
+                      placeholder="Enter email address"
+                      type="email"
+                    />
+                  )}
+                </Field>
+               
+              </div>
+
+              {/* REMARK */}
+              <div style={{ marginBottom: 16 }}>
+                <label>Remarks</label>
+                <Field name="remark">
+                  {({ field }: any) => (
+                    <TextArea {...field} rows={3} placeholder="Any additional remarks" />
+                  )}
+                </Field>
+              </div>
+
+              {/* BUTTONS */}
+              <Space>
+                <Button type="primary" htmlType="submit" loading={isSubmitting}>
+                  {editingStaff ? 'Update' : 'Create'}
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingStaff(null);
+                  }}
                 >
-                  <Field name="email" as={Input} placeholder="Email address" />
-                </Form.Item>
-
-                <Form.Item label="Remarks">
-                  <Field name="remark" as={TextArea} rows={3} placeholder="Any remarks" />
-                </Form.Item>
-
-                <Form.Item>
-                  <Space>
-                    <Button type="primary" htmlType="submit" loading={isSubmitting}>
-                      {editingStaff ? 'Update' : 'Create'}
-                    </Button>
-                    <Button onClick={() => {
-                      setIsModalOpen(false);
-                      setEditingStaff(null);
-                    }}>
-                      Cancel
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
+                  Cancel
+                </Button>
+              </Space>
             </FormikForm>
           )}
         </Formik>

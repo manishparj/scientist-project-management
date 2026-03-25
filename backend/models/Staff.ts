@@ -11,6 +11,7 @@ export interface IStaff extends Document {
   email: string;
   remark?: string;
   projectId: mongoose.Types.ObjectId;
+  scientistId: mongoose.Types.ObjectId; // Add this field
 }
 
 const StaffSchema = new Schema<IStaff>({
@@ -47,6 +48,11 @@ const StaffSchema = new Schema<IStaff>({
   projectId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Project',
+    required: true
+  },
+  scientistId: {  // Add this field
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   }
 }, {

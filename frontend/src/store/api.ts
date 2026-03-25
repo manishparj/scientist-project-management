@@ -1,4 +1,3 @@
-// frontend/src/store/api.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export interface User {
@@ -37,7 +36,7 @@ export interface Staff {
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: '/api',
+    baseUrl: '/api', // Use relative URL, Vite will proxy it
     prepareHeaders: (headers) => {
       const token = localStorage.getItem('token');
       if (token) {
