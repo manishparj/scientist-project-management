@@ -15,18 +15,23 @@ const validationSchema = Yup.object({
   email: Yup.string().email('Invalid email').required('Email is required'),
   password: Yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
   designation: Yup.string().required('Designation is required'),
-  mobile: Yup.string().required('Mobile number is required'),
+  mobile: Yup.string()
+    .required('Mobile number is required')
+    .matches(/^[0-9]{10}$/, 'Mobile number must be 10 digits'),
 });
 
 const ScientistForm: React.FC<ScientistFormProps> = ({ visible, onCancel, onSuccess }) => {
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
       await axios.post('/scientists', values);
       message.success('Scientist created successfully');
+      resetForm();
       onSuccess();
       onCancel();
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Failed to create scientist');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -34,9 +39,12 @@ const ScientistForm: React.FC<ScientistFormProps> = ({ visible, onCancel, onSucc
     <Modal
       title="Create Scientist Profile"
       open={visible}
-      onCancel={onCancel}
+      onCancel={() => {
+        onCancel();
+      }}
       footer={null}
       width={600}
+      destroyOnClose
     >
       <Formik
         initialValues={{
@@ -52,47 +60,23 @@ const ScientistForm: React.FC<ScientistFormProps> = ({ visible, onCancel, onSucc
         {({ errors, touched, isSubmitting }) => (
           <FormikForm>
             <Field name="name">
-              {({ field }: any) => (
+              {({ field, meta }: any) => (
                 <Form.Item
                   label="Name"
-                  validateStatus={touched.name && errors.name ? 'error' : ''}
-                  help={touched.name && errors.name}
+                  validateStatus={meta.touched && meta.error ? 'error' : ''}
+                  help={meta.touched && meta.error ? meta.error : ''}
                 >
                   <Input {...field} placeholder="Enter scientist name" />
                 </Form.Item>
               )}
             </Field>
 
-            <Field name="email">
-              {({ field }: any) => (
-                <Form.Item
-                  label="Email"
-                  validateStatus={touched.email && errors.email ? 'error' : ''}
-                  help={touched.email && errors.email}
-                >
-                  <Input {...field} placeholder="Enter email address" />
-                </Form.Item>
-              )}
-            </Field>
-
-            <Field name="password">
-              {({ field }: any) => (
-                <Form.Item
-                  label="Password"
-                  validateStatus={touched.password && errors.password ? 'error' : ''}
-                  help={touched.password && errors.password}
-                >
-                  <Input.Password {...field} placeholder="Enter password" />
-                </Form.Item>
-              )}
-            </Field>
-
             <Field name="designation">
-              {({ field }: any) => (
+              {({ field, meta }: any) => (
                 <Form.Item
                   label="Designation"
-                  validateStatus={touched.designation && errors.designation ? 'error' : ''}
-                  help={touched.designation && errors.designation}
+                  validateStatus={meta.touched && meta.error ? 'error' : ''}
+                  help={meta.touched && meta.error ? meta.error : ''}
                 >
                   <Input {...field} placeholder="Enter designation" />
                 </Form.Item>
@@ -100,13 +84,37 @@ const ScientistForm: React.FC<ScientistFormProps> = ({ visible, onCancel, onSucc
             </Field>
 
             <Field name="mobile">
-              {({ field }: any) => (
+              {({ field, meta }: any) => (
                 <Form.Item
                   label="Mobile"
-                  validateStatus={touched.mobile && errors.mobile ? 'error' : ''}
-                  help={touched.mobile && errors.mobile}
+                  validateStatus={meta.touched && meta.error ? 'error' : ''}
+                  help={meta.touched && meta.error ? meta.error : ''}
                 >
                   <Input {...field} placeholder="Enter mobile number" />
+                </Form.Item>
+              )}
+            </Field>
+
+            <Field name="email">
+              {({ field, meta }: any) => (
+                <Form.Item
+                  label="Email"
+                  validateStatus={meta.touched && meta.error ? 'error' : ''}
+                  help={meta.touched && meta.error ? meta.error : ''}
+                >
+                  <Input {...field} placeholder="Enter email address" />
+                </Form.Item>
+              )}
+            </Field>
+
+            <Field name="password">
+              {({ field, meta }: any) => (
+                <Form.Item
+                  label="Password"
+                  validateStatus={meta.touched && meta.error ? 'error' : ''}
+                  help={meta.touched && meta.error ? meta.error : ''}
+                >
+                  <Input.Password {...field} placeholder="Enter password for scientist login" />
                 </Form.Item>
               )}
             </Field>

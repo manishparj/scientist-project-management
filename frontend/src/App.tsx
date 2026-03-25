@@ -1,49 +1,42 @@
-import React from 'react';
+// frontend/src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
+import { ConfigProvider, theme } from 'antd';
+import { Toaster } from 'react-hot-toast';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Scientists from './pages/Scientists';
+import Projects from './pages/Projects';
+import Staff from './pages/Staff';
+import Layout from './components/Layout';
+import PrivateRoute from './components/PrivateRoute';
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-  
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
-};
-
-const AppRoutes: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  
+function App() {
   return (
-    <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
-      <Route
-        path="/dashboard"
-        element={
-          <PrivateRoute>
-            <Dashboard />
-          </PrivateRoute>
-        }
-      />
-      <Route path="/" element={<Navigate to="/dashboard" />} />
-    </Routes>
-  );
-};
-
-const App: React.FC = () => {
-  return (
-    <ConfigProvider>
+    <ConfigProvider
+      theme={{
+        algorithm: theme.defaultAlgorithm,
+        token: {
+          colorPrimary: '#1890ff',
+        },
+      }}
+    >
+      <Toaster position="top-right" />
       <Router>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<PrivateRoute />}>
+            <Route element={<Layout />}>
+              <Route index element={<Navigate to="/dashboard" />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="scientists" element={<Scientists />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="staff" element={<Staff />} />
+            </Route>
+          </Route>
+        </Routes>
       </Router>
     </ConfigProvider>
   );
-};
+}
 
 export default App;

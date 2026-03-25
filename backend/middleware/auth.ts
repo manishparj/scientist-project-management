@@ -1,50 +1,41 @@
+// backend/src/middlewares/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser } from '../models/User';
 
 interface AuthRequest extends Request {
-  user?: IUser;
+  user?: any;
 }
 
-export const protect = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     let token;
-
+    
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
-
+    
     if (!token) {
-      return res.status(401).json({ message: 'Not authorized to access this route' });
+      return res.status(401).json({ message: 'Not authorized' });
     }
-
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const user = await User.findById(decoded.id);
-
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
-    req.user = user;
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Not authorized to access this route' });
+    return res.status(401).json({ message: 'Not authorized' });
   }
 };
 
-export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-    
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: 'You are not authorized to access this route' });
-    }
-    next();
-  };
+export const superAdminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user?.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Access denied. Super admin only.' });
+  }
+  next();
+};
+
+export const scientistOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user?.role !== 'scientist') {
+    return res.status(403).json({ message: 'Access denied. Scientist only.' });
+  }
+  next();
 };

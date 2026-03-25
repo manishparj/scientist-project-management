@@ -1,23 +1,17 @@
-import express from 'express';
-import {
-  createProject,
-  getAllProjects,
-  getProjectById,
-  updateProject,
-  deleteProject,
-} from '../controllers/projectController';
-import { protect } from '../middleware/auth';
+// backend/src/routes/projectRoutes.ts
+import { Router } from 'express';
+import { protect } from '../middleware/auth.js';
+import { getProjects, createProject, updateProject, deleteProject } from '../controllers/projectController.js';
 
-const router = express.Router();
+const router = Router();
 
 router.use(protect);
 
 router.route('/')
-  .post(createProject)
-  .get(getAllProjects);
+  .get(getProjects)
+  .post(createProject);
 
 router.route('/:id')
-  .get(getProjectById)
   .put(updateProject)
   .delete(deleteProject);
 

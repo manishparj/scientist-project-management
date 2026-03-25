@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Card, Table, Button, Tag, Statistic, Row, Col, Tabs, Avatar, message } from 'antd';
+import { Layout, Menu, Card, Table, Button, Space, Tag, Statistic, Row, Col, Tabs, Avatar, message } from 'antd';
 import { 
   UserOutlined, 
   ProjectOutlined, 
@@ -63,43 +63,63 @@ const Dashboard: React.FC = () => {
   ];
 
   const projectColumns = [
-    { title: 'Project Name', dataIndex: 'projectName', key: 'projectName' },
-    { 
-      title: 'Scientist', 
-      dataIndex: ['scientistId', 'name'], 
-      key: 'scientist' 
-    },
-    { 
-      title: 'Start Date', 
-      dataIndex: 'startDate', 
-      key: 'startDate',
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD')
-    },
-    { 
-      title: 'End Date', 
-      dataIndex: 'tentativeEndDate', 
-      key: 'endDate',
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD')
-    },
-    { 
-      title: 'Type', 
-      dataIndex: 'projectType', 
-      key: 'type',
-      render: (type: string) => <Tag color="green">{type}</Tag>
-    },
-    { 
-      title: 'Staff Count', 
-      key: 'staffCount',
-      render: (_: any, record: Project) => record.staffDetails?.length || 0
-    },
-  ];
+  { title: 'Project Name', dataIndex: 'projectName', key: 'projectName' },
+  { 
+    title: 'Scientist', 
+    dataIndex: ['scientistId', 'name'], 
+    key: 'scientist' 
+  },
+  { 
+    title: 'Start Date', 
+    dataIndex: 'startDate', 
+    key: 'startDate',
+    render: (date: string) => dayjs(date).format('YYYY-MM-DD')
+  },
+  { 
+    title: 'End Date', 
+    dataIndex: 'endDate', 
+    key: 'endDate',
+    render: (date: string) => dayjs(date).format('YYYY-MM-DD')
+  },
+  { 
+    title: 'Type', 
+    dataIndex: 'projectType', 
+    key: 'type',
+    render: (type: string) => <Tag color="green">{type}</Tag>
+  },
+  { 
+    title: 'Status', 
+    dataIndex: 'status', 
+    key: 'status',
+    render: (status: string) => {
+      const statusColors = {
+        ongoing: 'processing',
+        completed: 'success',
+        yet_to_start: 'default'
+      };
+      const statusText = {
+        ongoing: 'Ongoing',
+        completed: 'Completed',
+        yet_to_start: 'Yet to Start'
+      };
+      return <Tag color={statusColors[status as keyof typeof statusColors]}>
+        {statusText[status as keyof typeof statusText]}
+      </Tag>;
+    }
+  },
+  { 
+    title: 'Staff Count', 
+    key: 'staffCount',
+    render: (_: any, record: Project) => record.staffDetails?.length || 0
+  },
+];
 
   const stats = {
-    totalScientists: scientists.length,
-    totalProjects: projects.length,
-    totalStaff: projects.reduce((sum, p) => sum + (p.staffDetails?.length || 0), 0),
-    activeProjects: projects.filter(p => dayjs(p.tentativeEndDate).isAfter(dayjs())).length,
-  };
+  totalScientists: scientists.length,
+  totalProjects: projects.length,
+  totalStaff: projects.reduce((sum, p) => sum + (p.staffDetails?.length || 0), 0),
+  activeProjects: projects.filter(p => p.status === 'ongoing').length,
+};
 
   return (
     <Layout style={{ minHeight: '100vh' }}>

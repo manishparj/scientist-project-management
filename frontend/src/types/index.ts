@@ -10,20 +10,22 @@ export interface User {
 export interface ProjectStaff {
   _id?: string;
   name: string;
-  post: string;
+  designation: string;
   doj: Date;
-  lastDate?: Date;
-  presentlyWorking: boolean;
+  lastWorkingDay?: Date;
+  currentlyWorking: boolean;
   mobile: string;
   email: string;
+  remarks?: string;
 }
 
 export interface Project {
   _id: string;
   projectName: string;
-  startDate: Date;
-  tentativeEndDate: Date;
   projectType: 'Research' | 'Development' | 'Consultancy' | 'Training';
+  startDate: Date;
+  endDate: Date;
+  status: 'ongoing' | 'completed' | 'yet_to_start';
   scientistId: User;
   staffDetails: ProjectStaff[];
   createdAt: Date;
