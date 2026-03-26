@@ -5,19 +5,13 @@ import {
   ProjectOutlined, 
   TeamOutlined, 
   UserSwitchOutlined,
-  BarChartOutlined,
-  PieChartOutlined,
-  TrophyOutlined,
-  CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   WarningOutlined,
-  FlagOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
 import { useGetScientistsQuery, useGetProjectsQuery } from '../store/api';
 import { useEffect, useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -42,69 +36,70 @@ const Dashboard = () => {
     return map;
   }, [scientists]);
 
-  // Fetch all staff data
+  // Fetch staff for each project using authenticated fetch
   useEffect(() => {
-  const fetchAllStaffData = async () => {
-    if (!projects?.length) {
-      setAllStaffData([]);
-      return;
-    }
-
-    setStaffLoading(true);
-    setError('');
-
-    try {
-      const results = await Promise.allSettled(
-        projects.map(async (project) => {
-          const res = await fetch(`/api/staff/project/${project._id}`);
-
-          if (!res.ok) throw new Error("Failed");
-
-          const data = await res.json();
-          const staffList = Array.isArray(data) ? data : data.data || [];
-
-          const scientistId =
-            typeof project.scientistId === "object"
-              ? project.scientistId?._id
-              : project.scientistId;
-
-          const scientist = scientistMap.get(scientistId);
-
-          return staffList.map((staff: any) => ({
-            ...staff,
-            projectId: project._id,
-            projectName: project.name,
-            projectType: project.type,
-            projectStatus: project.status,
-            scientistId,
-            scientistName: scientist?.name || 'Unknown',
-            scientistDesignation: scientist?.designation || 'Unknown',
-            scientistEmail: scientist?.email || 'Unknown'
-          }));
-        })
-      );
-
-      const allStaff = results
-        .filter(r => r.status === "fulfilled")
-        .flatMap((r: any) => r.value);
-
-      console.log("FINAL STAFF:", allStaff); // 🔥 DEBUG
-
-      setAllStaffData(allStaff);
-
-      if (!allStaff.length) {
-        setError('No staff members found');
+    const fetchAllStaffData = async () => {
+      if (!projects || projects.length === 0) {
+        setAllStaffData([]);
+        return;
       }
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch staff data');
-    } finally {
-      setStaffLoading(false);
-    }
-  };
 
-  fetchAllStaffData();
-}, [projects, scientistMap]);
+      setStaffLoading(true);
+      setError('');
+      
+      try {
+        const token = localStorage.getItem('token');
+        
+        const staffPromises = projects.map(async (project) => {
+          try {
+            const response = await fetch(`/api/staff/project/${project._id}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!response.ok) {
+              console.warn(`Failed to fetch staff for project ${project._id}: ${response.status}`);
+              return [];
+            }
+            
+            const staffList = await response.json();
+            
+            return staffList.map((staff: any) => ({
+              ...staff,
+              projectId: project._id,
+              projectName: project.name,
+              projectType: project.type,
+              projectStatus: project.status,
+              scientistId: project.scientistId,
+              scientistName: project.scientistId?.name || 'Unknown',
+              scientistDesignation: project.scientistId?.designation || 'Unknown',
+              scientistEmail: project.scientistId?.email || 'Unknown'
+            }));
+          } catch (err) {
+            console.error(`Error fetching staff for project ${project._id}:`, err);
+            return [];
+          }
+        });
+        
+        const results = await Promise.all(staffPromises);
+        const allStaff = results.flat();
+        setAllStaffData(allStaff);
+        
+        if (allStaff.length === 0 && projects.length > 0) {
+          setError('No staff members found. Please add staff to projects.');
+        }
+      } catch (err) {
+        console.error('Error fetching staff:', err);
+        setError('Failed to fetch staff data');
+      } finally {
+        setStaffLoading(false);
+      }
+    };
+    
+    fetchAllStaffData();
+  }, [projects, scientistMap]);
 
   // Calculate statistics based on filters
   const statistics = useMemo(() => {
@@ -138,9 +133,7 @@ const Dashboard = () => {
     
     // Staff by project
     const staffByProject = projects?.map(project => {
-      const projectStaff = allStaffData.filter(
-  s => String(s.projectId) === String(project._id)
-);
+      const projectStaff = allStaffData.filter(s => s.projectId === project._id);
       return {
         projectId: project._id,
         projectName: project.name,
@@ -191,33 +184,40 @@ const Dashboard = () => {
     const staffByDesignationData = Object.values(staffByDesignation);
     
     // Project details with staff info
-    const projectDetails = projects?.map(project => {
-      const scientistId =
-  typeof project.scientistId === "object"
-    ? project.scientistId?._id
-    : project.scientistId;
+   const projectDetails = projects?.map(project => {
+  const scientist =
+    scientistMap.get(String(project.scientistId?._id)) ||
+    scientists?.find(
+      s => String(s._id) === String(project.scientistId?._id)
+    );
 
-const scientist = scientistMap.get(scientistId);
-      const projectStaff = allStaffData.filter(
-  s => String(s.projectId) === String(project._id)
-);
-      
-      return {
-        key: project._id,
-        projectName: project.name,
-        projectType: project.type,
-        status: project.status,
-        startDate: project.startDate ? dayjs(project.startDate).format('YYYY-MM-DD') : 'N/A',
-        endDate: project.endDate ? dayjs(project.endDate).format('YYYY-MM-DD') : 'N/A',
-        scientistName: scientist?.name || 'Not Assigned',
-        scientistEmail: scientist?.email || 'N/A',
-        scientistDesignation: scientist?.designation || 'N/A',
-        totalStaff: projectStaff.length,
-        activeStaff: projectStaff.filter(s => s.currentlyWorking === true).length,
-        inactiveStaff: projectStaff.filter(s => s.currentlyWorking === false).length,
-        staffList: projectStaff
-      };
-    }) || [];
+  const projectStaff = allStaffData.filter(
+    s => String(s.projectId) === String(project._id)
+  );
+
+  return {
+    key: project._id,
+    projectName: project.name,
+    projectType: project.type,
+    status: project.status,
+    startDate: project.startDate
+      ? dayjs(project.startDate).format('YYYY-MM-DD')
+      : 'N/A',
+    endDate: project.endDate
+      ? dayjs(project.endDate).format('YYYY-MM-DD')
+      : 'N/A',
+
+    // ✅ FIXED HERE
+    scientistName: scientist?.name || 'Not Assigned',
+    scientistEmail: scientist?.email || 'N/A',
+    scientistDesignation: scientist?.designation || 'N/A',
+
+    totalStaff: projectStaff.length,
+    activeStaff: projectStaff.filter(s => s.currentlyWorking).length,
+    inactiveStaff: projectStaff.filter(s => !s.currentlyWorking).length,
+    staffList: projectStaff,
+  };
+}) || [];
     
     return {
       totalScientists,
@@ -236,9 +236,6 @@ const scientist = scientistMap.get(scientistId);
   }, [scientists, projects, allStaffData, selectedScientist, selectedProject, scientistMap]);
 
   // Colors for charts
-  const COLORS = ['#52c41a', '#1890ff', '#faad14'];
-
-  // Loading state
   if (scientistsLoading || projectsLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -247,76 +244,75 @@ const scientist = scientistMap.get(scientistId);
     );
   }
 
-  // Staff columns for tables
-  const staffColumns = [
-    { title: 'Name', dataIndex: 'name', key: 'name', width: 150 },
-    { title: 'Designation', dataIndex: 'designation', key: 'designation', width: 150 },
-    { 
-      title: 'Project', 
-      dataIndex: 'projectName', 
-      key: 'projectName', 
-      width: 200,
-      render: (text: string) => <Tag color="blue">{text || 'N/A'}</Tag>
-    },
-    { 
-      title: 'Scientist', 
-      dataIndex: 'scientistName', 
-      key: 'scientistName', 
-      width: 150,
-      render: (text: string, record: any) => (
-        <AntTooltip title={record.scientistDesignation}>
-          <Space>
-            <Avatar size="small" icon={<UserOutlined />} />
-            <span>{text}</span>
-          </Space>
-        </AntTooltip>
-      )
-    },
-    { 
-      title: 'DOJ', 
-      dataIndex: 'doj', 
-      key: 'doj', 
-      width: 110, 
-      render: (date: string) => date ? dayjs(date).format('YYYY-MM-DD') : 'N/A' 
-    },
-    {
-      title: 'Status',
-      dataIndex: 'currentlyWorking',
-      key: 'status',
-      width: 100,
-      render: (working: boolean) => (
-        <Tag color={working ? 'green' : 'red'}>
-          {working ? 'Active' : 'Inactive'}
+ // Staff columns for tables
+const staffColumns = [
+  { title: 'Name', dataIndex: 'name', key: 'name', width: 150 },
+  { title: 'Designation', dataIndex: 'designation', key: 'designation', width: 150 },
+  { title: 'Mobile', dataIndex: 'mobile', key: 'mobile', width: 120 },
+  { title: 'Email', dataIndex: 'email', key: 'email', width: 180 },
+  {
+    title: 'Project',
+    dataIndex: 'projectName',
+    key: 'projectName',
+    render: (text: string) => (
+      <Tag color="blue" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+        {text || 'N/A'}
+      </Tag>
+    ),
+  },
+  { 
+    title: 'Scientist', 
+    dataIndex: 'scientistName', 
+    key: 'scientistName', 
+    width: 150,
+    render: (text: string, record: any) => (
+      <AntTooltip title={record.scientistDesignation}>
+        <Space>
+          <Avatar size="small" icon={<UserOutlined />} />
+          <span>{text}</span>
+        </Space>
+      </AntTooltip>
+    )
+  },
+{
+  title: 'Service Info',
+  key: 'serviceInfo',
+  width: 220,
+  render: (_: any, record: any) => {
+    const doj = record.doj
+      ? dayjs(record.doj).format('DD-MM-YYYY')
+      : 'N/A';
+
+    const lastDay =
+      !record.currentlyWorking && record?.lastDay
+        ? dayjs(record.lastDay).format('DD-MM-YYYY')
+        : null;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+         {/* Status */}
+        <Tag color={record.currentlyWorking ? 'green' : 'red'}>
+          {record.currentlyWorking ? 'Active' : 'Inactive'}
         </Tag>
-      )
-    },
-    { title: 'Mobile', dataIndex: 'mobile', key: 'mobile', width: 120 },
-    { title: 'Email', dataIndex: 'email', key: 'email', width: 180 },
-    { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 150, ellipsis: true }
-  ];
+        
+        {/* DOJ */}
+        <span>
+          <strong>DOJ:</strong> {doj}
+        </span>
 
-  // Project status data for charts
-  const projectStatusChartData = [
-    { name: 'Completed', value: statistics.projectsByStatus.completed },
-    { name: 'Ongoing', value: statistics.projectsByStatus.ongoing },
-    { name: 'Yet to Start', value: statistics.projectsByStatus.yetToStart }
-  ].filter(item => item.value > 0);
-
-  // Staff by scientist data
-  const staffByScientistChartData = statistics.staffByScientist.map(s => ({
-    name: s.scientistName,
-    totalStaff: s.totalStaff,
-    activeStaff: s.activeStaff
-  }));
-
-  // Staff by project data for chart
-  const staffByProjectChartData = statistics.staffByProject
-    .filter(p => p.totalStaff > 0)
-    .map(p => ({
-      name: p.projectName,
-      totalStaff: p.totalStaff,
-      activeStaff: p.activeStaff
-    }));
+        {/* Last Working Day */}
+        {!record.currentlyWorking && (
+          <span>
+            <strong>Last Day:</strong> {lastDay || 'N/A'}
+          </span>
+        )}
+      </div>
+    );
+  },
+}
+  
+  // { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 150, ellipsis: true }
+];
 
   return (
     <div>
@@ -454,84 +450,6 @@ const scientist = scientistMap.get(scientistId);
           </Col>
         </Row>
       </Card>
-
-      {/* Charts Row - Project Status, Staff by Scientist, Staff by Project */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} lg={8}>
-          <Card title="Project Status Distribution">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={projectStatusChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.name}: ${entry.value}`}
-                  outerRadius={100}
-                  dataKey="value"
-                >
-                  {projectStatusChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-        <Col xs={24} lg={8}>
-          <Card title="Staff by Scientist">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={staffByScientistChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} interval={0} />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="totalStaff" fill="#1890ff" name="Total Staff" />
-                <Bar dataKey="activeStaff" fill="#52c41a" name="Active Staff" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-        <Col xs={24} lg={8}>
-          <Card title="Staff by Project">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={staffByProjectChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} interval={0} />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="totalStaff" fill="#1890ff" name="Total Staff" />
-                <Bar dataKey="activeStaff" fill="#52c41a" name="Active Staff" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Staff by Designation Chart */}
-      {statistics.staffByDesignation.length > 0 && (
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24}>
-            <Card title="Staff by Designation">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={statistics.staffByDesignation}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="designation" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#1890ff" name="Total Staff" />
-                  <Bar dataKey="activeCount" fill="#52c41a" name="Active Staff" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
-      )}
 
       {/* Complete Staff Table */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -689,44 +607,6 @@ const scientist = scientistMap.get(scientistId);
           </Col>
         </Row>
       )}
-
-      {/* Key Insights */}
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        <Col xs={24}>
-          <Card title="Key Insights">
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={8}>
-                <div style={{ padding: '16px', background: '#f0f2f5', borderRadius: '8px', textAlign: 'center' }}>
-                  <TrophyOutlined style={{ fontSize: '24px', color: '#faad14' }} />
-                  <h3>Top Scientist</h3>
-                  <p style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                    {statistics.staffByScientist.reduce((max, s) => s.totalStaff > max.totalStaff ? s : max, { scientistName: 'None', totalStaff: 0 }).scientistName}
-                  </p>
-                  <p>{statistics.staffByScientist.reduce((max, s) => s.totalStaff > max.totalStaff ? s : max, { totalStaff: 0 }).totalStaff} staff members</p>
-                </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <div style={{ padding: '16px', background: '#f0f2f5', borderRadius: '8px', textAlign: 'center' }}>
-                  <ProjectOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-                  <h3>Largest Project</h3>
-                  <p style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                    {statistics.staffByProject.reduce((max, p) => p.totalStaff > max.totalStaff ? p : max, { projectName: 'None', totalStaff: 0 }).projectName}
-                  </p>
-                  <p>{statistics.staffByProject.reduce((max, p) => p.totalStaff > max.totalStaff ? p : max, { totalStaff: 0 }).totalStaff} staff members</p>
-                </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <div style={{ padding: '16px', background: '#f0f2f5', borderRadius: '8px', textAlign: 'center' }}>
-                  <TeamOutlined style={{ fontSize: '24px', color: '#52c41a' }} />
-                  <h3>Staff Distribution</h3>
-                  <p>Avg Staff/Project: <strong>{(statistics.totalStaff / statistics.totalProjects || 0).toFixed(1)}</strong></p>
-                  <p>Avg Staff/Scientist: <strong>{(statistics.totalStaff / statistics.totalScientists || 0).toFixed(1)}</strong></p>
-                </div>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
     </div>
   );
 };

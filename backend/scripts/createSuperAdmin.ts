@@ -17,11 +17,15 @@ const createSuperAdmin = async () => {
       email: 'admin1234@example.com'
     });
 
-    if (existingAdmin) {
-      console.log('⚠️ Admin already exists');
-      await mongoose.disconnect();
-      process.exit(0);
-    }
+     const existingSci = await User.findOne({
+      email: 'pk.anand@dmrcjodhpur.nic.in'
+    });
+
+    // if (existingAdmin) {
+    //   console.log('⚠️ Admin already exists');
+    //   await mongoose.disconnect();
+    //   process.exit(0);
+    // }
 
     // ✅ DO NOT HASH HERE
     const superAdmin = new User({
@@ -32,11 +36,20 @@ const createSuperAdmin = async () => {
       isActive: true
     });
 
-    await superAdmin.save();
+    // ✅ DO NOT HASH HERE
+    const sciAdmin = new User({
+      name: 'Dr. Praveen Kumar Anand',
+      email: 'pk.anand@dgmail.com',
+      password: 'admin1234', // plain password
+      role: 'scientist',
+      designation: 'Scientist - F',
+      mobile: '9999999999',
+      isActive: true
+    });
 
-    console.log('✅ Super admin created');
-    console.log('📧 Email: admin123@example.com');
-    console.log('🔑 Password: admin123');
+    // await superAdmin.save();
+    await sciAdmin.save();
+
 
     await mongoose.disconnect();
 
