@@ -1,14 +1,9 @@
-// frontend/src/components/PrivateRoute.tsx
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
-const PrivateRoute = () => {
-  const token = localStorage.getItem('token');
+export const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <Outlet />;
+  return isAuthenticated ? children : <Navigate to="/login" />;
 };
-
-export default PrivateRoute;

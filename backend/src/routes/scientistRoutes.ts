@@ -6,12 +6,9 @@ import {
   updateScientist,
   deleteScientist,
 } from '../controllers/scientistController';
-import { protect, authorize } from '../middleware/auth';
 
 const router = express.Router();
 
-router.use(protect);
-router.use(authorize('superadmin'));
 
 router.route('/')
   .post(createScientist)

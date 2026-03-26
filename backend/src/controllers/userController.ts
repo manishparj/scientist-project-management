@@ -1,6 +1,6 @@
 // backend/src/controllers/userController.ts
 import { Request, Response } from 'express';
-import User from '../models/User.js';
+import User from '../models/User';
 import { log } from 'console';
 
 export const getScientists = async (req: Request, res: Response) => {

@@ -1,60 +1,72 @@
-// frontend/src/pages/Login.tsx
-import { Form, Input, Button, Card, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Formik, Form } from 'formik';
+import { Input, Button, Card, message } from 'antd';
+import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useLoginMutation } from '../store/api';
-import toast from 'react-hot-toast';
+import { useLoginMutation } from '../services/authApi';
+import { loginSchema } from '../utils/validation';
+import { useDispatch } from 'react-redux';
+import { setCredentials } from '../store/authSlice';
 
 const Login = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
 
-
-  const onFinish = async (values: any) => {
+  const handleSubmit = async (values: any) => {
     try {
       const result = await login(values).unwrap();
-      localStorage.setItem('token', result.token);
-      localStorage.setItem('user', JSON.stringify(result));
-      toast.success('Login successful!');
+      dispatch(setCredentials({ user: result.user, token: result.token }));
+      message.success('Login successful!');
       navigate('/dashboard');
     } catch (error: any) {
-      toast.error(error.data?.message || 'Login failed');
+      message.error(error.data?.message || 'Login failed');
     }
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      minHeight: '100vh',
-      background: '#f0f2f5'
-    }}>
-      <Card title="Scientist Management System" style={{ width: 400 }}>
-        <Form
-          name="login"
-          initialValues={{ remember: true }}
-          onFinish={onFinish}
-          size="large"
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
+      <Card title="Scientist Login" style={{ width: 400 }}>
+        <Formik
+          initialValues={{ email: '', password: '' }}
+          validationSchema={loginSchema}
+          onSubmit={handleSubmit}
         >
-          <Form.Item
-            name="email"
-            rules={[{ required: true, message: 'Please input your email!' }]}
-          >
-            <Input prefix={<UserOutlined />} placeholder="Email" />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={isLoading} block>
-              Log in
-            </Button>
-          </Form.Item>
-        </Form>
+          {({ values, errors, touched, handleChange, handleBlur }) => (
+            <Form>
+              <Input
+                prefix={<MailOutlined />}
+                placeholder="Email"
+                name="email"
+                value={values.email}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                style={{ marginBottom: 16 }}
+                status={errors.email && touched.email ? 'error' : ''}
+              />
+              {errors.email && touched.email && <div style={{ color: 'red', marginBottom: 8 }}>{errors.email}</div>}
+              
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder="Password"
+                name="password"
+                value={values.password}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                style={{ marginBottom: 16 }}
+                status={errors.password && touched.password ? 'error' : ''}
+              />
+              {errors.password && touched.password && <div style={{ color: 'red', marginBottom: 8 }}>{errors.password}</div>}
+              
+              <Button type="primary" htmlType="submit" loading={isLoading} block>
+                Login
+              </Button>
+              
+              <div style={{ marginTop: 16, textAlign: 'center' }}>
+                Don't have an account? <a href="/register">Register here</a>
+              </div>
+            </Form>
+          )}
+        </Formik>
       </Card>
     </div>
   );

@@ -1,39 +1,48 @@
 import { Formik, Form } from 'formik';
 import { Input, Select, DatePicker, Button, InputNumber, message } from 'antd';
-import { useCreateProjectMutation } from '../services/projectApi';
+import { useUpdateProjectMutation } from '../services/projectApi';
 import { projectSchema } from '../utils/validation';
+import { Project } from '../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 
-const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
-  const [createProject, { isLoading }] = useCreateProjectMutation();
+interface ProjectEditFormProps {
+  project: Project;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+const ProjectEditForm = ({ project, onSuccess, onCancel }: ProjectEditFormProps) => {
+  const [updateProject, { isLoading }] = useUpdateProjectMutation();
 
   const handleSubmit = async (values: any) => {
     try {
-      await createProject({
-        ...values,
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
+      await updateProject({
+        id: project._id,
+        data: {
+          ...values,
+          startDate: values.startDate.toISOString(),
+          endDate: values.endDate.toISOString(),
+        },
       }).unwrap();
-      message.success('Project created successfully');
       onSuccess();
     } catch (error: any) {
-      message.error(error.data?.message || 'Failed to create project');
+      message.error(error.data?.message || 'Failed to update project');
     }
   };
 
   return (
     <Formik
       initialValues={{
-        projectName: '',
-        projectShortName: '',
-        type: undefined,
-        status: 'Yet to start',
-        startDate: null,
-        endDate: null,
-        allocatedBudget: 0,
-        fundingAgency: undefined,
+        projectName: project.projectName,
+        projectShortName: project.projectShortName,
+        type: project.type,
+        status: project.status,
+        startDate: dayjs(project.startDate),
+        endDate: dayjs(project.endDate),
+        allocatedBudget: project.allocatedBudget,
+        fundingAgency: project.fundingAgency,
       }}
       validationSchema={projectSchema}
       onSubmit={handleSubmit}
@@ -49,7 +58,9 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             style={{ marginBottom: 16 }}
             status={errors.projectName && touched.projectName ? 'error' : ''}
           />
-          {errors.projectName && touched.projectName && <div style={{ color: 'red', marginBottom: 8 }}>{errors.projectName}</div>}
+          {errors.projectName && touched.projectName && (
+            <div style={{ color: 'red', marginBottom: 8 }}>{errors.projectName}</div>
+          )}
           
           <Input
             placeholder="Project Short Name"
@@ -60,7 +71,9 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             style={{ marginBottom: 16 }}
             status={errors.projectShortName && touched.projectShortName ? 'error' : ''}
           />
-          {errors.projectShortName && touched.projectShortName && <div style={{ color: 'red', marginBottom: 8 }}>{errors.projectShortName}</div>}
+          {errors.projectShortName && touched.projectShortName && (
+            <div style={{ color: 'red', marginBottom: 8 }}>{errors.projectShortName}</div>
+          )}
           
           <Select
             placeholder="Project Type"
@@ -75,7 +88,9 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             <Option value="ICMR">ICMR</Option>
             <Option value="NHRP">NHRP</Option>
           </Select>
-          {errors.type && touched.type && <div style={{ color: 'red', marginBottom: 8 }}>{errors.type}</div>}
+          {errors.type && touched.type && (
+            <div style={{ color: 'red', marginBottom: 8 }}>{errors.type}</div>
+          )}
           
           <Select
             placeholder="Status"
@@ -91,7 +106,9 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             <Option value="Cancelled">Cancelled</Option>
             <Option value="Archive">Archive</Option>
           </Select>
-          {errors.status && touched.status && <div style={{ color: 'red', marginBottom: 8 }}>{errors.status}</div>}
+          {errors.status && touched.status && (
+            <div style={{ color: 'red', marginBottom: 8 }}>{errors.status}</div>
+          )}
           
           <DatePicker
             placeholder="Start Date"
@@ -99,7 +116,6 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             onChange={(date) => setFieldValue('startDate', date)}
             value={values.startDate}
           />
-          {errors.startDate && touched.startDate && <div style={{ color: 'red', marginBottom: 8 }}>{errors.startDate}</div>}
           
           <DatePicker
             placeholder="End Date"
@@ -107,8 +123,6 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             onChange={(date) => setFieldValue('endDate', date)}
             value={values.endDate}
           />
-          {errors.endDate && touched.endDate && <div style={{ color: 'red', marginBottom: 8 }}>{errors.endDate}</div>}
-          
           <InputNumber
             placeholder="Allocated Budget"
             style={{ width: '100%', marginBottom: 16 }}
@@ -117,8 +131,11 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             onChange={(value) => setFieldValue('allocatedBudget', value)}
             formatter={(value) => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
             parser={(value) => value!.replace(/₹\s?|(,*)/g, '')}
+            min={0}
           />
-          {errors.allocatedBudget && touched.allocatedBudget && <div style={{ color: 'red', marginBottom: 8 }}>{errors.allocatedBudget}</div>}
+          {errors.allocatedBudget && touched.allocatedBudget && (
+            <div style={{ color: 'red', marginBottom: 8 }}>{errors.allocatedBudget}</div>
+          )}
           
           <Select
             placeholder="Funding Agency"
@@ -133,15 +150,22 @@ const ProjectForm = ({ onSuccess }: { onSuccess: () => void }) => {
             <Option value="PM-ABHIM">PM-ABHIM</Option>
             <Option value="OTHER">OTHER</Option>
           </Select>
-          {errors.fundingAgency && touched.fundingAgency && <div style={{ color: 'red', marginBottom: 8 }}>{errors.fundingAgency}</div>}
+          {errors.fundingAgency && touched.fundingAgency && (
+            <div style={{ color: 'red', marginBottom: 8 }}>{errors.fundingAgency}</div>
+          )}
           
-          <Button type="primary" htmlType="submit" loading={isLoading} block>
-            Create Project
-          </Button>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="primary" htmlType="submit" loading={isLoading}>
+              Update Project
+            </Button>
+          </div>
         </Form>
       )}
     </Formik>
   );
 };
 
-export default ProjectForm;
+export default ProjectEditForm;

@@ -1,41 +1,29 @@
-// frontend/src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, theme } from 'antd';
-import { Toaster } from 'react-hot-toast';
+import { useSelector } from 'react-redux';
+import { RootState } from './store';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import Scientists from './pages/Scientists';
-import Projects from './pages/Projects';
-import Staff from './pages/Staff';
-import Layout from './components/Layout';
-import PrivateRoute from './components/PrivateRoute';
+import PublicDashboard from './pages/PublicDashboard';
+import { PrivateRoute } from './components/PrivateRoute';
 
 function App() {
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.defaultAlgorithm,
-        token: {
-          colorPrimary: '#1890ff',
-        },
-      }}
-    >
-      <Toaster position="top-right" />
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<PrivateRoute />}>
-            <Route element={<Layout />}>
-              <Route index element={<Navigate to="/dashboard" />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="scientists" element={<Scientists />} />
-              <Route path="projects" element={<Projects />} />
-              <Route path="staff" element={<Staff />} />
-            </Route>
-          </Route>
-        </Routes>
-      </Router>
-    </ConfigProvider>
+    <Router>
+      <Routes>
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
+        <Route path="/dashboard" element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        } />
+        <Route path="/public-dashboard" element={<PublicDashboard />} />
+        <Route path="/" element={<Navigate to="/public-dashboard" />} />
+      </Routes>
+    </Router>
   );
 }
 
